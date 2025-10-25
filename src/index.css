@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Amino's Color System */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+
+    /* Primary - Baby Blue #003C6B */
+    --primary: 206 100% 21%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Silver #32CE83 */
+    --secondary: 151 61% 50%;
+    --secondary-foreground: 0 0% 15%;
+
+    /* Gold CTA #D4AF37 */
+    --gold: 43 61% 52%;
+    --gold-foreground: 0 0% 15%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 197 73% 74%;
+    --accent-foreground: 0 0% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 75%;
+    --input: 0 0% 85%;
+    --ring: 197 73% 74%;
+
+    --radius: 0.625rem;
+
+    /* Custom tokens for Amino's */
+    --hero-gradient: linear-gradient(135deg, hsl(197 73% 74% / 0.15), hsl(197 73% 74% / 0.05));
+    --card-shadow: 0 2px 8px hsl(0 0% 0% / 0.08);
+    --card-shadow-hover: 0 4px 16px hsl(0 0% 0% / 0.12);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 197 73% 74%;
+    --primary-foreground: 0 0% 15%;
+
+    --secondary: 0 0% 25%;
+    --secondary-foreground: 0 0% 95%;
+
+    --gold: 43 61% 52%;
+    --gold-foreground: 0 0% 15%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 197 73% 74%;
+    --accent-foreground: 0 0% 15%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 197 73% 74%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-gold {
+    @apply bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] hover:opacity-90 transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:opacity-90 transition-all duration-300;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-secondary text-secondary-foreground hover:bg-secondary/10 transition-all duration-300;
+  }
+
+  .ruo-badge {
+    @apply inline-flex items-center px-3 py-1 text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/30 rounded-full;
+  }
+
+  .card-product {
+    @apply bg-card border border-border rounded-xl p-4 transition-all duration-300 hover:shadow-lg;
+    box-shadow: var(--card-shadow);
+  }
+
+  .card-product:hover {
+    box-shadow: var(--card-shadow-hover);
+  }
+}
