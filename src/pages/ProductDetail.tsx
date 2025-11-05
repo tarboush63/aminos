@@ -17,7 +17,7 @@ import { useCart } from "@/context/CartContext";
  * - missing => /images/placeholder.png
  */
 function normalizeImagePath(image?: string | null): string {
-  const placeholder = "/images/placeholder.png";
+  const placeholder = "/images/nad1.jpg";
   if (!image) return placeholder;
   if (/^https?:\/\//i.test(image)) return image;
   if (image.startsWith("/")) return image;
@@ -32,7 +32,7 @@ const ProductDetail = () => {
   const product = id ? products.find((p) => String(p.id) === String(id)) : undefined;
   const { addItem } = useCart();
 
-  const defaultImg = "/images/placeholder.png";
+  const defaultImg = "/images/nad1.jpg";
   const [imgSrc, setImgSrc] = useState(() => normalizeImagePath(product?.image));
 
   const handleAddToCart = (product: any) => {

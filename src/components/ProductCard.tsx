@@ -11,7 +11,7 @@ interface ProductCardProps {
 
 /** same normalizer as ProductDetail: ensures any product.image value resolves to a public path or remote URL */
 function normalizeImagePath(image?: string | null): string {
-  const placeholder = "/images/placeholder.png";
+  const placeholder = "/images/nad1.jpg";
   if (!image) return placeholder;
   if (/^https?:\/\//i.test(image)) return image;
   if (image.startsWith("/")) return image;
@@ -20,7 +20,7 @@ function normalizeImagePath(image?: string | null): string {
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
-  const defaultImg = "/images/placeholder.png";
+  const defaultImg = "/images/nad1.jpg";
   const initial = normalizeImagePath(product?.image);
   const [imgSrc, setImgSrc] = useState(initial);
 
