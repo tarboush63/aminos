@@ -60,3 +60,7 @@ lerna-debug.log*
 coverage/
 .cache/
 .eslintcache
+
+# env files
+server/.env
+frontend/.env
