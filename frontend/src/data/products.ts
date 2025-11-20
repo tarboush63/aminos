@@ -119,7 +119,7 @@ export const products: Product[] = [
     storage: "Store at −20°C",
     description: "Reliable research peptide for standard protocols",
     fullDescription: "NAD+ provides consistent quality for routine laboratory research. Each batch is thoroughly tested and documented.",
-    image: "@/assets/nad.jpg",
+    image: "@/assets/nad1.jpg",
     coaFile: "coa-peptide-006.pdf",
     stock: true,
     leadTime: "24-72 hours",
@@ -127,7 +127,7 @@ export const products: Product[] = [
     featured: false
   },
  {
-    id: "peptide-001",
+    id: "peptide-007",
     name: "GLP-3 RT 30mg kit",
     sku: "AMN-reta-30MG",
     price: 149.99,
@@ -145,7 +145,7 @@ export const products: Product[] = [
     featured: true
   },
   {
-    id: "peptide-002",
+    id: "peptide-008",
     name: "GLP-3 RT 10mg kit",
     sku: "AMN-P002-5MG",
     price: 279.99,
@@ -163,7 +163,7 @@ export const products: Product[] = [
     featured: true
   },
   {
-    id: "peptide-003",
+    id: "peptide-009",
     name: "GLP-2 TRZ 30mg kit",
     sku: "AMN-P003-10MG",
     price: 499.99,
@@ -181,7 +181,7 @@ export const products: Product[] = [
     featured: false
   },
   {
-    id: "peptide-004",
+    id: "peptide-010",
     name: "GLOW 70mg kit",
     sku: "AMN-P004-2MG",
     price: 169.99,
@@ -199,7 +199,7 @@ export const products: Product[] = [
     featured: false
   },
   {
-    id: "peptide-005",
+    id: "peptide-011",
     name: "GLP-2 TRZ 60mg kit",
     sku: "AMN-P005-5MG",
     price: 299.99,
@@ -217,7 +217,7 @@ export const products: Product[] = [
     featured: true
   },
   {
-    id: "peptide-006",
+    id: "peptide-012",
     name: "NAD+ 500mg kit",
     sku: "AMN-P006-2MG",
     price: 159.99,
@@ -227,7 +227,7 @@ export const products: Product[] = [
     storage: "Store at −20°C",
     description: "Reliable research peptide for standard protocols",
     fullDescription: "NAD+ provides consistent quality for routine laboratory research. Each batch is thoroughly tested and documented.",
-    image: "@/assets/nad.jpg",
+    image: "@/assets/nad1.jpg",
     coaFile: "coa-peptide-006.pdf",
     stock: true,
     leadTime: "24-72 hours",

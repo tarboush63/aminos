@@ -44,7 +44,7 @@ const Index = () => {
               
               <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
                 Amino's supplies laboratory-grade peptides for research use only. 
-                Fast order processing — PayPal checkout.
+                Fast order processing.
               </p>
               
               <div className="flex flex-wrap gap-4">

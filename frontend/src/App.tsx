@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import  CheckoutSuccess from "@/pages/CheckoutSuccess";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
@@ -13,9 +14,11 @@ import Cart from "./pages/Cart";
 import Legal from "./pages/Legal";
 import AccessRestricted from "./pages/AccessRestricted";
 import NotFound from "./pages/NotFound";
+import KitDetail from "./pages/KitDetails";
 
 // === NEW: import CartProvider ===
 import { CartProvider } from "@/context/CartContext";
+import Kits from "./pages/kits";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +41,9 @@ const App = () => (
             <Route path="/legal" element={<Legal />} />
             <Route path="/legal/:section" element={<Legal />} />
             <Route path="/access-restricted" element={<AccessRestricted />} />
+            <Route path="/kit/:id" element={<KitDetail/>} />
+            <Route path="/kits" element={<Kits />} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

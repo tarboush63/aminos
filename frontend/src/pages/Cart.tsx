@@ -1,24 +1,55 @@
-// src/pages/Cart.tsx
-import React from "react";
+//src/pages/Cart.tsx
+import React, { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { loadStripe } from "@stripe/stripe-js";
+import type { Stripe as StripeJS } from "@stripe/stripe-js";
+import { createCheckoutSession, CartItemForCheckout } from "@/api/checkout";
 
-/**
- * Definitive Cart page that reads from CartContext.
- * - Shows items from useCart()
- * - Provides quantity controls and remove/clear actions
- * - Includes console.debug for deterministic visibility
- */
+// Load Stripe.js with publishable key from env (Vite exposes VITE_ prefixed variables)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Debug: always print current items when Cart renders
   console.debug("[Cart page] render: items=", items, "totalItems=", totalItems, "totalPrice=", totalPrice);
+
+   const handleCheckout = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const payloadItems: CartItemForCheckout[] = items.map((i) => ({
+        id: i.id,
+        name: i.name,
+        image: "https://via.placeholder.com/300", // ensure full public URL
+        price: i.price ?? 0,
+        quantity: i.quantity,
+        currency: "usd",
+      }));
+
+      // Now backend returns { url } (hosted Stripe Checkout page)
+      const data = await createCheckoutSession(payloadItems /*, optionally customerEmail */);
+
+      if (data?.url) {
+        // Redirect the browser to the Stripe-hosted Checkout page
+        window.location.href = data.url;
+        return;
+      }
+
+      throw new Error("No checkout URL returned");
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      setError(err?.message || "Failed to create checkout session");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -86,15 +117,15 @@ const Cart = () => {
                 <p className="mb-2">Total Items: <strong>{totalItems}</strong></p>
                 <p className="mb-6">Total Price: <strong>${totalPrice.toFixed(2)}</strong></p>
 
+                {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
+
                 <div className="space-y-3">
                   <Button
                     className="w-full btn-gold h-12"
-                    onClick={() => {
-                      // placeholder for checkout; keep simple alert for now
-                      window.alert("Proceeding to checkout (implement actual checkout flow).");
-                    }}
+                    onClick={handleCheckout}
+                    disabled={busy}
                   >
-                    Proceed to Checkout
+                    {busy ? "Redirecting..." : "Proceed to Checkout"}
                   </Button>
 
                   <Button variant="outline" className="w-full h-12" onClick={() => clearCart()}>

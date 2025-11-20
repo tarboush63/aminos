@@ -56,10 +56,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <p className="text-sm text-muted-foreground">{product.form}</p>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        {/* <div className="flex items-center justify-between pt-2">
           <span className="text-2xl font-bold">${product.price}</span>
           <span className="ruo-badge text-[10px]">RUO</span>
-        </div>
+        </div> */}
 
         <div className="flex gap-2 pt-2">
           <Button asChild className="flex-1 btn-gold">

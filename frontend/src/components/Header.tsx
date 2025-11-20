@@ -29,6 +29,9 @@ export const Header = () => {
             <Link to="/products" className="text-sm font-medium hover:text-primary transition-colors">
               Products
             </Link>
+            <Link to="/kits" className="text-sm font-medium hover:text-primary transition-colors">
+              Kits
+            </Link>
             <Link to="/faq" className="text-sm font-medium hover:text-primary transition-colors">
               FAQ
             </Link>
@@ -38,6 +41,7 @@ export const Header = () => {
             <Link to="/legal" className="text-sm font-medium hover:text-primary transition-colors">
               Legal
             </Link>
+
           </nav>
 
           <div className="flex items-center space-x-4">

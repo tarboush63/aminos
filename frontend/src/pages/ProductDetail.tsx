@@ -92,10 +92,10 @@ const ProductDetail = () => {
 
             <div className="space-y-6">
               <div>
-                <div className="flex items-start justify-between mb-2">
+                {/* <div className="flex items-start justify-between mb-2">
                   <h1 className="text-4xl font-bold">{product.name}</h1>
                   <span className="ruo-badge">RUO</span>
-                </div>
+                </div> */}
                 <p className="text-muted-foreground">SKU: {product.sku}</p>
               </div>
 
@@ -125,10 +125,10 @@ const ProductDetail = () => {
                   <span className="text-muted-foreground">Storage:</span>
                   <span className="font-medium">{product.storage}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span className="text-muted-foreground">Lead Time:</span>
                   <span className="font-medium">{product.leadTime}</span>
-                </div>
+                </div> */}
               </div>
 
               <div className="flex gap-4">
