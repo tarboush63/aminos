@@ -130,7 +130,7 @@ export default function CheckoutSuccess() {
             </div>
           </section>
 
-          <section className="mb-6">
+          {/* <section className="mb-6">
             <h2 className="font-semibold text-lg mb-2">Shipping</h2>
             {data.shipping ? (
               <div className="rounded border p-4">
@@ -147,7 +147,7 @@ export default function CheckoutSuccess() {
             ) : (
               <p>No shipping information collected.</p>
             )}
-          </section>
+          </section> */}
 
           <div className="flex gap-3">
                <Button asChild variant="outline" className="h-12 px-6">
