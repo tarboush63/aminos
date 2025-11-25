@@ -125,19 +125,19 @@ const KitDetail = () => {
                   <span className="text-muted-foreground">Storage:</span>
                   <span className="font-medium">{product.storage}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span className="text-muted-foreground">Lead Time:</span>
                   <span className="font-medium">{product.leadTime}</span>
-                </div>
+                </div> */}
               </div>
 
               <div className="flex gap-4">
                 <Button onClick={() => handleAddToCart(product)} className="flex-1 btn-gold h-12 text-base" disabled={!product.stock}>
                   <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
                 </Button>
-                <Button asChild variant="outline" className="h-12 px-6">
+                {/* <Button asChild variant="outline" className="h-12 px-6">
                   <Link to="/contact">Request Bulk Quote</Link>
-                </Button>
+                </Button> */}
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">

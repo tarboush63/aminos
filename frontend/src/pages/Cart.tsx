@@ -69,7 +69,7 @@ const Cart = () => {
         image: i.image ?? "https://via.placeholder.com/300",
         price: i.price ?? 0,
         quantity: i.quantity,
-        currency: i.currency ?? "usd",
+        currency: "usd",
       }));
 
       const total = Number(totalPrice.toFixed(2));
