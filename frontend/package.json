@@ -82,6 +82,7 @@
   "optionalDependencies": {
   "@rollup/rollup-linux-x64-gnu": "4.24.0",
   "@rollup/rollup-linux-x64-musl": "4.24.0",
-  "fsevents": "~2.3.2"
+  "fsevents": "~2.3.2",
+  "@swc/core-linux-x64-gnu": "1.13.2"
 }
 }
