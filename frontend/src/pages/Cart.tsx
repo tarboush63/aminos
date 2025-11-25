@@ -1,4 +1,4 @@
-//src/pages/Cart.tsx
+// src/pages/Cart.tsx
 import React, { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -6,48 +6,95 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { loadStripe } from "@stripe/stripe-js";
-import type { Stripe as StripeJS } from "@stripe/stripe-js";
-import { createCheckoutSession, CartItemForCheckout } from "@/api/checkout";
+import { createOrder, CartItemForCheckout } from "@/api/checkout";
 
-// Load Stripe.js with publishable key from env (Vite exposes VITE_ prefixed variables)
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^[+\d()\-.\s]{7,20}$/; // permissive; adjust to your locale
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
-  const [busy, setBusy] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  console.debug("[Cart page] render: items=", items, "totalItems=", totalItems, "totalPrice=", totalPrice);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    company: "",
+    notes: "",
+  });
 
-   const handleCheckout = async () => {
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = "Full name is required";
+    if (!form.email.trim()) errs.email = "Email is required";
+    else if (!emailRegex.test(form.email.trim())) errs.email = "Invalid email address";
+    if (form.phone && !phoneRegex.test(form.phone)) errs.phone = "Invalid phone number";
+    if (!form.address.trim()) errs.address = "Address is required";
+    // company and notes optional
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm((s) => ({ ...s, [name]: value }));
+  };
+
+  const handleSubmitOrder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
-    setBusy(true);
+    setSuccess(null);
+
+    if (!validateForm()) {
+      setError("Please fix validation errors and try again.");
+      return;
+    }
+
+    if (items.length === 0) {
+      setError("Your cart is empty. Add items before checking out.");
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const payloadItems: CartItemForCheckout[] = items.map((i) => ({
         id: i.id,
         name: i.name,
-        image: "https://via.placeholder.com/300", // ensure full public URL
+        image: i.image ?? "https://via.placeholder.com/300",
         price: i.price ?? 0,
         quantity: i.quantity,
-        currency: "usd",
+        currency: i.currency ?? "usd",
       }));
 
-      // Now backend returns { url } (hosted Stripe Checkout page)
-      const data = await createCheckoutSession(payloadItems /*, optionally customerEmail */);
+      const total = Number(totalPrice.toFixed(2));
+      const resp = await createOrder(payloadItems, {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        company: form.company.trim(),
+        notes: form.notes.trim(),
+      }, total);
 
-      if (data?.url) {
-        // Redirect the browser to the Stripe-hosted Checkout page
-        window.location.href = data.url;
-        return;
+      if (resp?.success) {
+        setSuccess(resp.message || "Order submitted. Our sales team will contact you via email.");
+        clearCart();
+        setCheckoutOpen(false);
+      } else {
+        // backend returned success: false
+        throw new Error(resp?.message || "Order submission failed");
       }
-
-      throw new Error("No checkout URL returned");
     } catch (err: any) {
-      console.error("Checkout error:", err);
-      setError(err?.message || "Failed to create checkout session");
+      console.error("Order submission failed:", err);
+      setError(err?.message || "Failed to submit order. Please try again or contact support.");
     } finally {
-      setBusy(false);
+      setSubmitting(false);
     }
   };
 
@@ -117,25 +164,98 @@ const Cart = () => {
                 <p className="mb-2">Total Items: <strong>{totalItems}</strong></p>
                 <p className="mb-6">Total Price: <strong>${totalPrice.toFixed(2)}</strong></p>
 
+                {success && <div className="text-sm text-green-600 mb-2">{success}</div>}
                 {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
 
-                <div className="space-y-3">
-                  <Button
-                    className="w-full btn-gold h-12"
-                    onClick={handleCheckout}
-                    disabled={busy}
-                  >
-                    {busy ? "Redirecting..." : "Proceed to Checkout"}
-                  </Button>
+                {!checkoutOpen ? (
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full btn-gold h-12"
+                      onClick={() => { setError(null); setCheckoutOpen(true); }}
+                      disabled={submitting}
+                    >
+                      Proceed to Checkout
+                    </Button>
 
-                  <Button variant="outline" className="w-full h-12" onClick={() => clearCart()}>
-                    Clear Cart
-                  </Button>
+                    <Button variant="outline" className="w-full h-12" onClick={() => clearCart()}>
+                      Clear Cart
+                    </Button>
 
-                  <Button asChild className="w-full" variant="ghost">
-                    <Link to="/products">Continue Shopping</Link>
-                  </Button>
-                </div>
+                    <Button asChild className="w-full" variant="ghost">
+                      <Link to="/products">Continue Shopping</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitOrder} className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium">Full name *</label>
+                      <input
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full rounded-md border px-3 py-2 ${formErrors.name ? "border-red-600" : "border-border"}`}
+                        required
+                      />
+                      {formErrors.name && <p className="text-xs text-red-600 mt-1">{formErrors.name}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Email *</label>
+                      <input
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full rounded-md border px-3 py-2 ${formErrors.email ? "border-red-600" : "border-border"}`}
+                        required
+                      />
+                      {formErrors.email && <p className="text-xs text-red-600 mt-1">{formErrors.email}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Phone</label>
+                      <input
+                        name="phone"
+                        value={form.phone}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full rounded-md border px-3 py-2 ${formErrors.phone ? "border-red-600" : "border-border"}`}
+                        placeholder="+1 555 555 5555"
+                      />
+                      {formErrors.phone && <p className="text-xs text-red-600 mt-1">{formErrors.phone}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Address *</label>
+                      <input
+                        name="address"
+                        value={form.address}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full rounded-md border px-3 py-2 ${formErrors.address ? "border-red-600" : "border-border"}`}
+                        required
+                      />
+                      {formErrors.address && <p className="text-xs text-red-600 mt-1">{formErrors.address}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Company (optional)</label>
+                      <input name="company" value={form.company} onChange={handleChange} className="mt-1 block w-full rounded-md border px-3 py-2 border-border" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Notes (optional)</label>
+                      <textarea name="notes" value={form.notes} onChange={handleChange} className="mt-1 block w-full rounded-md border px-3 py-2 border-border" rows={3} />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button type="submit" className="btn-gold flex-1 h-12" disabled={submitting}>
+                        {submitting ? "Submitting..." : `Place Order — $${totalPrice.toFixed(2)}`}
+                      </Button>
+                      <Button type="button" variant="outline" className="h-12" onClick={() => setCheckoutOpen(false)} disabled={submitting}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </aside>
             </div>
           )}

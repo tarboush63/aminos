@@ -1,4 +1,4 @@
-// frontend/src/api/checkout.ts
+// src/api/checkout.ts
 export type CartItemForCheckout = {
   id: string;
   name: string;
@@ -8,23 +8,85 @@ export type CartItemForCheckout = {
   currency?: string;
 };
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL ?? "";
+const BACKEND = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/+$/, ""); // trim trailing slash
 
-export async function createCheckoutSession(items: CartItemForCheckout[], customerEmail?: string) {
-  const res = await fetch(`${BACKEND}/api/checkout/session`, {
+// small timeout wrapper to avoid hanging requests in production
+async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+/**
+ * Submit an order to backend which sends email to sales.
+ * Expects backend to return JSON with shape { success: boolean, message?: string, orderId?: string }
+ */
+export async function createOrder(
+  items: CartItemForCheckout[],
+  customer: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    company?: string;
+    notes?: string;
+  },
+  total: number
+): Promise<{ success: boolean; message?: string; orderId?: string }> {
+  if (!BACKEND) throw new Error("Backend URL is not configured (VITE_BACKEND_URL)");
+
+  const payload = {
+    items,
+    customer,
+    total,
+    currency: items.length ? items[0].currency ?? "usd" : "usd",
+    createdAt: new Date().toISOString(),
+  };
+
+  const res = await fetchWithTimeout(`${BACKEND}/api/orders`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
-    body: JSON.stringify({ items, customerEmail }),
-  });
+    body: JSON.stringify(payload),
+  }, 20000);
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("createCheckoutSession failed:", res.status, text);
-    throw new Error(text || `HTTP ${res.status}`);
+  // handle non-JSON gracefully
+  const text = await res.text().catch(() => "");
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch (err) {
+    // not JSON
+    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+    return { success: true, message: text || "Order sent (non-JSON response)" };
   }
 
-  // this should be { url: string }
+  if (!res.ok) {
+    const msg = json?.message || json?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return json as { success: boolean; message?: string; orderId?: string };
+}
+
+/** Optional: legacy Stripe checkout (deprecated) */
+export async function createCheckoutSession(items: CartItemForCheckout[], customerEmail?: string) {
+  console.warn("createCheckoutSession is deprecated for manual email ordering.");
+  const res = await fetch(`${BACKEND}/api/checkout/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, customerEmail }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
   return res.json() as Promise<{ url?: string }>;
 }
