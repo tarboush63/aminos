@@ -17,7 +17,7 @@ const app = express();
 const allowedOrigins = [
   "https://aminospep.com",
   "https://www.aminospep.com",
-  "http://localhost:5173" // dev, if needed
+  "http://localhost:8080" // dev, if needed
 ];
 
 
@@ -35,6 +35,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
   credentials: true,
 }));
+app.use(express.json());
 
 
 // Rate limiter for orders
