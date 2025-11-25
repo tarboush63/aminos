@@ -14,16 +14,28 @@ const SALES_EMAIL = process.env.SALES_EMAIL;
 if (!SALES_EMAIL) throw new Error("SALES_EMAIL is not configured");
 
 const app = express();
+const allowedOrigins = [
+  "https://aminospep.com",
+  "https://www.aminospep.com",
+  "http://localhost:5173" // dev, if needed
+];
+
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
   credentials: true,
 }));
-app.use(express.json());
+
 
 // Rate limiter for orders
 const orderLimiter = rateLimit({
