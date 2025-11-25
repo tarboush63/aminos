@@ -3,123 +3,114 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import bodyParser from "body-parser";
 import nodemailer from "nodemailer";
-
 
 dotenv.config();
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const PORT = Number(process.env.PORT) || 4000;
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "*";
+const SALES_EMAIL = process.env.SALES_EMAIL;
 
+if (!SALES_EMAIL) throw new Error("SALES_EMAIL is not configured");
 
 const app = express();
 
-// Security middleware
+// Middleware
 app.use(helmet());
 app.use(cors({
-    origin: FRONTEND_URL,  // http://localhost:8080 for dev
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"],
-    credentials: true,     // ✅ enable cookies / credentials
-
+  origin: FRONTEND_URL,
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+  credentials: true,
 }));
+app.use(express.json());
 
-// Rate limiting for endpoints that create checkout sessions
-const createSessionLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute window
-  max: 30, // limit each IP to 30 requests per window
+// Rate limiter for orders
+const orderLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // adjust per needs
   standardHeaders: true,
   legacyHeaders: false,
+  message: { success: false, message: "Too many orders from this IP, please wait." },
 });
 
-// Use JSON body parser for normal routes (not webhook)
-app.use((req, res, next) => {
-  if (req.originalUrl === "/api/stripe/webhook") {
-    // leave raw body for webhook verification
-    next();
-  } else {
-    express.json()(req, res, next);
-  }
-});
-
-/**
- * Utility: map your cart items to Stripe line_items.
- * In production you should validate product IDs/prices server-side instead of trusting client prices.
- */
-type CartItem = {
-  id: string;
-  name: string;
-  description?: string;
-  image?: string;
-  price: number; // in decimal e.g. 19.99
-  quantity: number;
-  currency?: string; // optional, default usd
-};
-
-
-function toStripeLineItems(items: CartItem[]) {
-  return items.map((it) => ({
-    price_data: {
-      currency: "usd",
-      product_data: {
-        name: it.name,
-        description: it.description,
-        images: it.image ? [it.image] : undefined,
-        metadata: { productId: it.id }
-      },
-      unit_amount: Math.round(it.price * 100), // cents
-    },
-    quantity: it.quantity,
-  }));
-}
-
-
-
+// Nodemailer transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
-  secure: true, // true for 465, false for other ports
+  secure: Number(process.env.SMTP_PORT) === 465, // true only for 465
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
 });
+const escapeHtml = (str: string | undefined): string => {
+  if (!str) return "";
+  return str.replace(/[&<>"']/g, (match) => {
+    switch (match) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      case "'": return "&#39;";
+      default: return match;
+    }
+  });
+};
 
-app.post("/checkout/order", async (req, res) => {
+const safeHtml = (str?: string) => escapeHtml(str || "");
+
+// API: create order
+app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
   try {
-    const { customer, cart, total } = req.body;
+    const { customer, items, total } = req.body;
 
-    const cartItemsHtml = cart.map(
-      (item: any) => `<li>${item.quantity} x ${item.name} - $${item.price}</li>`
-    ).join("");
+    // Basic validation
+    if (!customer || !customer.name || !customer.email || !customer.address) {
+      return res.status(400).json({ success: false, message: "Missing required customer fields" });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
+    if (typeof total !== "number" || total <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid total" });
+    }
 
+    // Build HTML for items
+    const cartItemsHtml = items.map((item: any) => `
+      <li>${item.quantity} x ${safeHtml(item.name)} - $${item.price.toFixed(2)}</li>
+    `).join("");
+
+    // Build email
     const mailOptions = {
       from: `"Website Orders" <${process.env.SMTP_USER}>`,
-      to: process.env.SALES_EMAIL, // your sales team email
-      subject: `New Order from ${customer.name}`,
+      to: SALES_EMAIL,
+      subject: `New Order from ${safeHtml(customer.name)}`,
       html: `
         <h2>New Order Received</h2>
-        <h3>Customer Details:</h3>
-        <p>Name: ${customer.name}</p>
-        <p>Email: ${customer.email}</p>
-        <p>Phone: ${customer.phone}</p>
-        <p>Address: ${customer.address.street}, ${customer.address.city}, ${customer.address.zip}, ${customer.address.country}</p>
-        <h3>Order:</h3>
+        <h3>Customer Details</h3>
+        <p>Name: ${safeHtml(customer.name)}</p>
+        <p>Email: ${safeHtml(customer.email)}</p>
+        ${customer.phone ? `<p>Phone: ${safeHtml(customer.phone)}</p>` : ""}
+        <p>Address: ${safeHtml(customer.address)}</p>
+        ${customer.company ? `<p>Company: ${safeHtml(customer.company)}</p>` : ""}
+        ${customer.notes ? `<p>Notes: ${safeHtml(customer.notes)}</p>` : ""}
+        <h3>Order Items</h3>
         <ul>${cartItemsHtml}</ul>
-        <p><strong>Total: $${total}</strong></p>
+        <p><strong>Total: $${total.toFixed(2)}</strong></p>
       `,
     };
 
+    // Send email
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ success: true });
+
+    res.status(200).json({ success: true, message: "Order received. Our sales team will contact you shortly." });
   } catch (err) {
-    console.error("Order email error:", err);
-    res.status(500).json({ success: false, message: "Failed to send order" });
+    console.error("Order error:", err);
+    res.status(500).json({ success: false, message: "Failed to process order" });
   }
 });
 
-
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
