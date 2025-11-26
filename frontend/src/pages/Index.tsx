@@ -86,7 +86,7 @@ const Index = () => {
                 <div>
                   <h3 className="font-semibold text-lg mb-2">Secure Checkout</h3>
                   <p className="text-muted-foreground text-sm">
-                    Secure PayPal checkout + SSL encryption for safe transactions.
+                    Secure checkout + SSL encryption for safe transactions.
                   </p>
                 </div>
               </div>

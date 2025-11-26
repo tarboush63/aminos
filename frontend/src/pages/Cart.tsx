@@ -8,6 +8,7 @@ import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createOrder, CartItemForCheckout } from "@/api/checkout";
 
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^[+\d()\-.\s]{7,20}$/; // permissive; adjust to your locale
 
@@ -86,6 +87,7 @@ const Cart = () => {
         setSuccess(resp.message || "Order submitted. Our sales team will contact you via email.");
         clearCart();
         setCheckoutOpen(false);
+        
       } else {
         // backend returned success: false
         throw new Error(resp?.message || "Order submission failed");
@@ -225,7 +227,7 @@ const Cart = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium">Address *</label>
+                      <label className="block text-sm font-medium">Address - ZIP Code & Apartment*</label>
                       <input
                         name="address"
                         value={form.address}

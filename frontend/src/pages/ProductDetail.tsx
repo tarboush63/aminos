@@ -92,10 +92,10 @@ const ProductDetail = () => {
 
             <div className="space-y-6">
               <div>
-                {/* <div className="flex items-start justify-between mb-2">
+                 <div className="flex items-start justify-between mb-2">
                   <h1 className="text-4xl font-bold">{product.name}</h1>
-                  <span className="ruo-badge">RUO</span>
-                </div> */}
+                  {/* <span className="ruo-badge">RUO</span> */}
+                </div> 
                 <p className="text-muted-foreground">SKU: {product.sku}</p>
               </div>
 
@@ -143,8 +143,8 @@ const ProductDetail = () => {
               <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
                 <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-destructive mb-1">Not for Human Consumption</p>
-                  <p className="text-sm text-muted-foreground">This product is for research use only. Not for human or veterinary use.</p>
+                  <p className="font-semibold text-destructive mb-1">On Sale</p>
+                  <p className="text-sm text-muted-foreground">This product is on sale for a limited time.</p>
                 </div>
               </div>
 
