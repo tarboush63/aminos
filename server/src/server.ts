@@ -37,6 +37,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Trust first proxy (Render)
+app.set("trust proxy", 1);
+
 
 // Rate limiter for orders
 const orderLimiter = rateLimit({
