@@ -76,17 +76,3 @@ export async function createOrder(
   return json as { success: boolean; message?: string; orderId?: string };
 }
 
-/** Optional: legacy Stripe checkout (deprecated) */
-export async function createCheckoutSession(items: CartItemForCheckout[], customerEmail?: string) {
-  console.warn("createCheckoutSession is deprecated for manual email ordering.");
-  const res = await fetch(`${BACKEND}/api/checkout/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, customerEmail }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<{ url?: string }>;
-}

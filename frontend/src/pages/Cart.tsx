@@ -7,10 +7,12 @@ import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createOrder, CartItemForCheckout } from "@/api/checkout";
+import { useNavigate } from "react-router-dom";
 
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^[+\d()\-.\s]{7,20}$/; // permissive; adjust to your locale
+
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
@@ -84,14 +86,20 @@ const Cart = () => {
       }, total);
 
       if (resp?.success) {
-        setSuccess(resp.message || "Order submitted. Our sales team will contact you via email.");
-        clearCart();
-        setCheckoutOpen(false);
-        
-      } else {
-        // backend returned success: false
-        throw new Error(resp?.message || "Order submission failed");
-      }
+  // ensure success message is shown before we clear the cart (so the user sees it)
+  const message = resp.message || `Our sales team will contact you shortly to confirm your order.`;
+  setSuccess(message);
+
+  // wait a short moment to let the UI render the success message (optional UX nicety)
+  setTimeout(() => {
+    clearCart();
+    setCheckoutOpen(false);
+  }, 600);
+
+} else {
+  // backend returned success:false
+  throw new Error(resp?.message || "Order submission failed");
+}
     } catch (err: any) {
       console.error("Order submission failed:", err);
       setError(err?.message || "Failed to submit order. Please try again or contact support.");
@@ -165,6 +173,15 @@ const Cart = () => {
                 <h2 className="text-2xl font-bold mb-4">Cart Summary</h2>
                 <p className="mb-2">Total Items: <strong>{totalItems}</strong></p>
                 <p className="mb-6">Total Price: <strong>${totalPrice.toFixed(2)}</strong></p>
+                {submitting && (
+                <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  <p className="font-medium">Processing your order</p>
+                  <p className="mt-1 text-xs">
+                    Please wait. Do not refresh the page while we submit your order.
+                  </p>
+                </div>
+              )}
+
 
                 {success && <div className="text-sm text-green-600 mb-2">{success}</div>}
                 {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
