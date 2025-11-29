@@ -94,7 +94,7 @@ const Cart = () => {
   setTimeout(() => {
     clearCart();
     setCheckoutOpen(false);
-  }, 600);
+  }, 2000);
 
 } else {
   // backend returned success:false
