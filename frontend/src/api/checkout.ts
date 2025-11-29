@@ -11,7 +11,7 @@ export type CartItemForCheckout = {
 const BACKEND = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/+$/, ""); // trim trailing slash
 
 // small timeout wrapper to avoid hanging requests in production
-async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = 15000): Promise<Response> {
+async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = 60000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
