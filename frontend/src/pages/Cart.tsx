@@ -1,5 +1,5 @@
 // src/pages/Cart.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,11 @@ import { useCart } from "@/context/CartContext";
 import { createOrder, CartItemForCheckout } from "@/api/checkout";
 import { useNavigate } from "react-router-dom";
 
-
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^[+\d()\-.\s]{7,20}$/; // permissive; adjust to your locale
 
+const TAX_RATE = 0.06; // 6%
+const SHIPPING_FLAT = 6.0; // $6 fixed shipping
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
@@ -39,7 +40,6 @@ const Cart = () => {
     else if (!emailRegex.test(form.email.trim())) errs.email = "Invalid email address";
     if (form.phone && !phoneRegex.test(form.phone)) errs.phone = "Invalid phone number";
     if (!form.address.trim()) errs.address = "Address is required";
-    // company and notes optional
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -48,6 +48,17 @@ const Cart = () => {
     const { name, value } = e.target;
     setForm((s) => ({ ...s, [name]: value }));
   };
+
+  // subtotal, tax, shipping, grand total
+  const { subtotal, tax, shipping, grandTotal } = useMemo(() => {
+    const subtotal = Number(totalPrice) || 0;
+    // round tax to cents
+    const tax = Number((subtotal * TAX_RATE).toFixed(2));
+    // only charge shipping if there are items
+    const shipping = items.length > 0 ? SHIPPING_FLAT : 0;
+    const grand = Number((subtotal + tax + shipping).toFixed(2));
+    return { subtotal, tax, shipping, grandTotal: grand };
+  }, [totalPrice, items]);
 
   const handleSubmitOrder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -75,7 +86,6 @@ const Cart = () => {
         currency: "usd",
       }));
 
-      const total = Number(totalPrice.toFixed(2));
       const resp = await createOrder(payloadItems, {
         name: form.name.trim(),
         email: form.email.trim(),
@@ -83,23 +93,20 @@ const Cart = () => {
         address: form.address.trim(),
         company: form.company.trim(),
         notes: form.notes.trim(),
-      }, total);
+      }, grandTotal);
 
       if (resp?.success) {
-  // ensure success message is shown before we clear the cart (so the user sees it)
-  const message = resp.message || `Our sales team will contact you shortly to confirm your order.`;
-  setSuccess(message);
+        const message = resp.message || `Our sales team will contact you shortly to confirm your order.`;
+        setSuccess(message);
 
-  // wait a short moment to let the UI render the success message (optional UX nicety)
-  setTimeout(() => {
-    clearCart();
-    setCheckoutOpen(false);
-  }, 2000);
-
-} else {
-  // backend returned success:false
-  throw new Error(resp?.message || "Order submission failed");
-}
+        // small UX pause so success shows before clearing
+        setTimeout(() => {
+          clearCart();
+          setCheckoutOpen(false);
+        }, 2000);
+      } else {
+        throw new Error(resp?.message || "Order submission failed");
+      }
     } catch (err: any) {
       console.error("Order submission failed:", err);
       setError(err?.message || "Failed to submit order. Please try again or contact support.");
@@ -172,16 +179,33 @@ const Cart = () => {
               <aside className="rounded-lg border border-border p-6">
                 <h2 className="text-2xl font-bold mb-4">Cart Summary</h2>
                 <p className="mb-2">Total Items: <strong>{totalItems}</strong></p>
-                <p className="mb-6">Total Price: <strong>${totalPrice.toFixed(2)}</strong></p>
-                {submitting && (
-                <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                  <p className="font-medium">Processing your order</p>
-                  <p className="mt-1 text-xs">
-                    Please wait. Do not refresh the page while we submit your order.
-                  </p>
-                </div>
-              )}
 
+                <div className="mb-2 flex justify-between">
+                  <span>Subtotal</span>
+                  <span><strong>${subtotal.toFixed(2)}</strong></span>
+                </div>
+
+                <div className="mb-2 flex justify-between">
+                  <span>Tax (6%)</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+
+                <div className="mb-4 flex justify-between">
+                  <span>Shipping</span>
+                  <span>${shipping.toFixed(2)}</span>
+                </div>
+
+                <div className="mb-6 border-t pt-3 flex justify-between items-center">
+                  <span className="text-lg font-semibold">Grand Total</span>
+                  <span className="text-xl font-bold">${grandTotal.toFixed(2)}</span>
+                </div>
+
+                {submitting && (
+                  <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    <p className="font-medium">Processing your order</p>
+                    <p className="mt-1 text-xs">Please wait. Do not refresh the page while we submit your order.</p>
+                  </div>
+                )}
 
                 {success && <div className="text-sm text-green-600 mb-2">{success}</div>}
                 {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
@@ -267,7 +291,7 @@ const Cart = () => {
 
                     <div className="flex gap-2">
                       <Button type="submit" className="btn-gold flex-1 h-12" disabled={submitting}>
-                        {submitting ? "Submitting..." : `Place Order — $${totalPrice.toFixed(2)}`}
+                        {submitting ? "Submitting..." : `Place Order — $${grandTotal.toFixed(2)}`}
                       </Button>
                       <Button type="button" variant="outline" className="h-12" onClick={() => setCheckoutOpen(false)} disabled={submitting}>
                         Cancel
