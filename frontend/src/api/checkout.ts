@@ -74,7 +74,7 @@ export async function createOrder(
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(payload),
-  }, 600000);
+  }, 60000);
 
   const text = await res.text().catch(() => "");
   let json: any = null;
