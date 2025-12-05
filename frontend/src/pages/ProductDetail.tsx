@@ -140,14 +140,13 @@ const ProductDetail = () => {
                 </Button> */}
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-destructive mb-1">On Sale</p>
-                  <p className="text-sm text-muted-foreground">This product is on sale for a limited time.</p>
+                  <p className="font-semibold text-green-700 mb-1">Special Offer</p>
+                  <p className="text-sm text-green-600">This item is currently discounted. Limited-time pricing.</p>
                 </div>
               </div>
-
               <Button variant="outline" className="w-full" asChild>
                 <a href={`/coa/${product.coaFile}`} download>
                   <FileText className="mr-2 h-4 w-4" /> Download COA (Certificate of Analysis)
