@@ -1,0 +1,32 @@
+[
+  {
+    "code": "WELCOME10",
+    "type": "percent",
+    "amount": 10,
+    "currency": "usd",
+    "minTotal": 0,
+    "expiresAt": "2026-01-01T00:00:00.000Z",
+    "maxUses": 1000,
+    "description": "10% off first orders"
+  },
+  {
+    "code": "FLAT50",
+    "type": "fixed",
+    "amount": 50,
+    "currency": "usd",
+    "minTotal": 100,
+    "expiresAt": "2025-12-31T23:59:59.000Z",
+    "maxUses": 200,
+    "description": "$50 off orders over $100"
+  },
+  {
+    "code": "FREESHIP",
+    "type": "free_shipping",
+    "amount": 0,
+    "currency": "usd",
+    "minTotal": 0,
+    "expiresAt": "2026-06-01T00:00:00.000Z",
+    "maxUses": null,
+    "description": "Free shipping"
+  }
+]

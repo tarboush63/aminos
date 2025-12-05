@@ -5,12 +5,26 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import sgMail from "@sendgrid/mail";
+import { validatePromoForOrder } from "./promos";
+
 
 dotenv.config();
 
 const PORT = Number(process.env.PORT) || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "*";
 const SALES_EMAIL = process.env.SALES_EMAIL;
+
+// rate limiter for promo checks
+const promoLimiter = rateLimit({
+  windowMs: 15 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many promo checks, slow down." },
+});
+
+
+
 
 if (!SALES_EMAIL) throw new Error("SALES_EMAIL is not configured");
 
@@ -75,7 +89,7 @@ const safeHtml = (str?: string) => escapeHtml(str || "");
 // API: create order
 app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
   try {
-    const { customer, items, total } = req.body;
+ const { customer, items, total, promoCode } = req.body as { customer?: any; items?: any[]; total?: number; promoCode?: string };
 
     // Basic validation
     if (!customer || !customer.name || !customer.email || !customer.address) {
@@ -88,10 +102,22 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Invalid total" });
     }
 
+        let promoHtml = "";
+    if (promoCode) {
+      const promoValidation = validatePromoForOrder(promoCode, total, items.length ? (items[0].currency ?? "usd") : "usd");
+      if (!promoValidation.valid) {
+        return res.status(400).json({ success: false, message: `Promo invalid: ${promoValidation.reason}` });
+      }
+      const discountAmount = promoValidation.discountAmount ?? 0;
+      const finalTotal = Math.round((total - discountAmount) * 100) / 100;
+      promoHtml = `<p>Applied promo <strong>${escapeHtml(promoCode)}</strong> - Discount: $${Number(discountAmount).toFixed(2)} — New total: $${Number(finalTotal).toFixed(2)}</p>`;
+    }
+
     // Build HTML for items
     const cartItemsHtml = items.map((item: any) => `
       <li>${item.quantity} x ${safeHtml(item.name)} - $${Number(item.price).toFixed(2)}</li>
     `).join("");
+
 
     const html = `
       <h2>New Order Received</h2>
@@ -106,7 +132,9 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
       <ul>${cartItemsHtml}</ul>
       <p><strong>Total: $${Number(total).toFixed(2)}</strong></p>
       <p>Received at: ${new Date().toISOString()}</p>
+      <p>${promoHtml}</p>
     `;
+
 
     // Use SendGrid if configured and requested
     const useSendGrid = process.env.USE_SENDGRID === "true" || !!process.env.SENDGRID_API_KEY;
@@ -141,6 +169,31 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Order error:", err);
     res.status(500).json({ success: false, message: "Failed to process order" });
+  }
+});
+
+app.post("/api/promos/validate", promoLimiter, (req: Request, res: Response) => {
+  try {
+    const { code, total, currency } = req.body as { code?: string; total?: number; currency?: string };
+    if (!code) return res.status(400).json({ success: false, message: "Missing code" });
+    const t = typeof total === "number" ? total : 0;
+    const result = validatePromoForOrder(code, t, currency);
+    if (!result.valid) return res.status(400).json({ success: false, message: result.reason || "Invalid promo" });
+    return res.status(200).json({
+      success: true,
+      promo: {
+        code: result.promo!.code,
+        type: result.promo!.type,
+        amount: result.promo!.amount,
+        description: result.promo!.description,
+      },
+      discountAmount: result.discountAmount,
+      newTotal: result.newTotal,
+      freeShipping: result.freeShipping || false,
+    });
+  } catch (err) {
+    console.error("Promo validate error:", err);
+    return res.status(500).json({ success: false, message: "Failed to validate promo" });
   }
 });
 
