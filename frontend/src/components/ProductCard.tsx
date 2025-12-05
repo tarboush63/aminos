@@ -55,6 +55,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <p className="text-sm text-muted-foreground">{product.purity}</p>
           <p className="text-sm text-muted-foreground">{product.form}</p>
         </div>
+                {/* Price display */}
+        <div className="pt-2">
+          <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span>
+        </div>
 
         {/* <div className="flex items-center justify-between pt-2">
           <span className="text-2xl font-bold">${product.price}</span>

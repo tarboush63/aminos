@@ -96,7 +96,7 @@ const ProductDetail = () => {
                   <h1 className="text-4xl font-bold">{product.name}</h1>
                   {/* <span className="ruo-badge">RUO</span> */}
                 </div> 
-                <p className="text-muted-foreground">SKU: {product.sku}</p>
+                {/* <p className="text-muted-foreground">SKU: {product.sku}</p> */}
               </div>
 
               <div className="flex items-baseline gap-4">
@@ -121,10 +121,10 @@ const ProductDetail = () => {
                   <span className="text-muted-foreground">Form:</span>
                   <span className="font-medium">{product.form}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span className="text-muted-foreground">Storage:</span>
                   <span className="font-medium">{product.storage}</span>
-                </div>
+                </div> */}
                 {/* <div className="flex justify-between">
                   <span className="text-muted-foreground">Lead Time:</span>
                   <span className="font-medium">{product.leadTime}</span>
