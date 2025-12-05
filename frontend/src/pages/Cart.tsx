@@ -1,19 +1,19 @@
 // src/pages/Cart.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { createOrder, CartItemForCheckout } from "@/api/checkout";
+import { createOrder, validatePromo, CartItemForCheckout } from "@/api/checkout";
 import { useNavigate } from "react-router-dom";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^[+\d()\-.\s]{7,20}$/; // permissive; adjust to your locale
 
 const TAX_RATE = 0.06; // 6%
-const SHIPPING_FLAT = 6.0; // $6 fixed shipping
+const SHIPPING_FLAT = 15.0; // $6 fixed shipping
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
@@ -33,6 +33,17 @@ const Cart = () => {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Promo UI state
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplying, setPromoApplying] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountAmount: number;
+    newTotal: number;
+    freeShipping?: boolean;
+  } | null>(null);
+
   const validateForm = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = "Full name is required";
@@ -49,16 +60,79 @@ const Cart = () => {
     setForm((s) => ({ ...s, [name]: value }));
   };
 
-  // subtotal, tax, shipping, grand total
-  const { subtotal, tax, shipping, grandTotal } = useMemo(() => {
+  // Subtotal, tax, shipping, totals (pre-promo and post-promo)
+  const { subtotal, tax, shipping, prePromoTotal, postPromoTotal } = useMemo(() => {
     const subtotal = Number(totalPrice) || 0;
-    // round tax to cents
     const tax = Number((subtotal * TAX_RATE).toFixed(2));
-    // only charge shipping if there are items
     const shipping = items.length > 0 ? SHIPPING_FLAT : 0;
-    const grand = Number((subtotal + tax + shipping).toFixed(2));
-    return { subtotal, tax, shipping, grandTotal: grand };
-  }, [totalPrice, items]);
+    const prePromoTotal = Number((subtotal + tax + shipping).toFixed(2));
+
+    let postPromoTotal = prePromoTotal;
+    if (appliedPromo) {
+      // prefer server provided numbers, but calculate defensively
+      postPromoTotal = typeof appliedPromo.newTotal === "number" ? Number(appliedPromo.newTotal.toFixed(2)) : Math.max(0, Number((prePromoTotal - (appliedPromo.discountAmount || 0)).toFixed(2)));
+    }
+    return { subtotal, tax, shipping, prePromoTotal, postPromoTotal };
+  }, [totalPrice, items, appliedPromo]);
+
+  // If cart changes, remove applied promo (server promo validity depends on totals/items)
+  useEffect(() => {
+    // Clear applied promo whenever items or subtotal change
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError(null);
+    // don't clear success/error from order submission
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, totalPrice]);
+
+  const handleApplyPromo = async () => {
+    setPromoError(null);
+    setPromoApplying(true);
+    try {
+      if (!promoInput || !promoInput.trim()) {
+        setPromoError("Enter a promo code");
+        return;
+      }
+
+      // Build payload items and send current prePromoTotal to validate against
+      const payloadItems: CartItemForCheckout[] = items.map((i) => ({
+        id: i.id,
+        name: i.name,
+        image: i.image ?? "https://via.placeholder.com/300",
+        price: i.price ?? 0,
+        quantity: i.quantity,
+        currency: "usd",
+      }));
+
+      const result = await validatePromo(promoInput.trim(), payloadItems, Number(prePromoTotal));
+      if (!result.success) {
+        setPromoError(result.message || "Promo invalid");
+        setAppliedPromo(null);
+        return;
+      }
+
+      // result.discountAmount and newTotal are the authoritative preview values
+      setAppliedPromo({
+        code: (result.promo?.code || promoInput.trim()).toUpperCase(),
+        discountAmount: Number(result.discountAmount ?? 0),
+        newTotal: Number(result.newTotal ?? prePromoTotal),
+        freeShipping: !!result.freeShipping,
+      });
+      setPromoError(null);
+    } catch (err: any) {
+      console.error("Promo validation failed:", err);
+      setPromoError(err?.message || "Failed to validate promo. Try again.");
+      setAppliedPromo(null);
+    } finally {
+      setPromoApplying(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError(null);
+  };
 
   const handleSubmitOrder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -86,14 +160,20 @@ const Cart = () => {
         currency: "usd",
       }));
 
-      const resp = await createOrder(payloadItems, {
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        company: form.company.trim(),
-        notes: form.notes.trim(),
-      }, grandTotal);
+      // Use postPromoTotal as total to send to server; server will re-validate promo
+      const resp = await createOrder(
+        payloadItems,
+        {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          address: form.address.trim(),
+          company: form.company.trim(),
+          notes: form.notes.trim(),
+        },
+        Number(postPromoTotal),
+        appliedPromo?.code // may be undefined
+      );
 
       if (resp?.success) {
         const message = resp.message || `Our sales team will contact you shortly to confirm your order.`;
@@ -109,7 +189,16 @@ const Cart = () => {
       }
     } catch (err: any) {
       console.error("Order submission failed:", err);
-      setError(err?.message || "Failed to submit order. Please try again or contact support.");
+
+      // If server rejected promo specifically, detect and surface message
+      // Backend returns 400 with message like "Promo invalid: <reason>"
+      const message = err?.message || "Failed to submit order. Please try again or contact support.";
+      setError(message);
+
+      // If the server says the promo is invalid, unset it so user can continue
+      if (typeof message === "string" && message.toLowerCase().includes("promo invalid")) {
+        setAppliedPromo(null);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -186,7 +275,7 @@ const Cart = () => {
                 </div>
 
                 <div className="mb-2 flex justify-between">
-                  <span>Tax (6%)</span>
+                  <span>Tax </span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
 
@@ -195,9 +284,45 @@ const Cart = () => {
                   <span>${shipping.toFixed(2)}</span>
                 </div>
 
+                <div className="mb-3 flex items-center gap-2">
+                  <input
+                    placeholder="Promo code"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    className="flex-1 rounded-md border px-3 py-2 border-border"
+                    disabled={promoApplying || submitting}
+                  />
+                  {!appliedPromo ? (
+                    <Button onClick={handleApplyPromo} disabled={promoApplying || submitting} className="h-10">
+                      {promoApplying ? "Applying..." : "Apply"}
+                    </Button>
+                  ) : (
+                    <Button variant="destructive" onClick={handleRemovePromo} disabled={submitting} className="h-10">
+                      Remove
+                    </Button>
+                  )}
+                </div>
+
+                {promoError && <p className="text-xs text-red-600 mb-3">{promoError}</p>}
+
+                {appliedPromo && (
+                  <div className="mb-3 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="font-medium">Promo applied: {appliedPromo.code}</p>
+                        <p className="text-xs mt-1">{appliedPromo.freeShipping ? "Free shipping applied" : `${appliedPromo.discountAmount ? `$${appliedPromo.discountAmount.toFixed(2)} off` : ""}`}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm">New total</p>
+                        <p className="font-semibold">${postPromoTotal.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-6 border-t pt-3 flex justify-between items-center">
                   <span className="text-lg font-semibold">Grand Total</span>
-                  <span className="text-xl font-bold">${grandTotal.toFixed(2)}</span>
+                  <span className="text-xl font-bold">${postPromoTotal.toFixed(2)}</span>
                 </div>
 
                 {submitting && (
@@ -291,7 +416,7 @@ const Cart = () => {
 
                     <div className="flex gap-2">
                       <Button type="submit" className="btn-gold flex-1 h-12" disabled={submitting}>
-                        {submitting ? "Submitting..." : `Place Order — $${grandTotal.toFixed(2)}`}
+                        {submitting ? "Submitting..." : `Place Order — $${postPromoTotal.toFixed(2)}`}
                       </Button>
                       <Button type="button" variant="outline" className="h-12" onClick={() => setCheckoutOpen(false)} disabled={submitting}>
                         Cancel
