@@ -94,7 +94,7 @@ const KitDetail = () => {
               <div>
                   <div className="flex items-start justify-between mb-2">
                   <h1 className="text-4xl font-bold">{product.name}</h1>
-                  {/* <span className="ruo-badge">RUO</span> */}
+                   <span className="ruo-badge">On Sale</span> 
                 </div> 
                 {/* <p className="text-muted-foreground">SKU: {product.sku}</p> */}
               </div>

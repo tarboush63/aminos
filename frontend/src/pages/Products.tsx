@@ -60,8 +60,7 @@ const Products = () => {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="Standard">Standard</SelectItem>
-                <SelectItem value="Specialized">Specialized</SelectItem>
-                <SelectItem value="Premium">Premium</SelectItem>
+                <SelectItem value="Featured">Featured</SelectItem>
               </SelectContent>
             </Select>
 

@@ -94,7 +94,7 @@ const ProductDetail = () => {
               <div>
                  <div className="flex items-start justify-between mb-2">
                   <h1 className="text-4xl font-bold">{product.name}</h1>
-                  {/* <span className="ruo-badge">RUO</span> */}
+                   <span className="ruo-badge">On Sale</span>
                 </div> 
                 {/* <p className="text-muted-foreground">SKU: {product.sku}</p> */}
               </div>
@@ -141,7 +141,7 @@ const ProductDetail = () => {
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                {/* <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" /> */}
                 <div>
                   <p className="font-semibold text-green-700 mb-1">Special Offer</p>
                   <p className="text-sm text-green-600">This item is currently discounted. Limited-time pricing.</p>
