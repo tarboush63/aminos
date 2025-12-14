@@ -31,6 +31,7 @@ const Cart = () => {
     notes: "",
   });
 
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Promo UI state
@@ -134,6 +135,15 @@ const Cart = () => {
     setPromoError(null);
   };
 
+  function normalizeImagePath(image?: string | null): string {
+  const placeholder = "/images/nad1.jpg";
+  if (!image) return placeholder;
+  if (/^https?:\/\//i.test(image)) return image;
+  if (image.startsWith("/")) return image;
+  const basename = image.replace(/^.*[\\/]/, "");
+  return basename ? `/images/${basename}` : placeholder;
+}
+
   const handleSubmitOrder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
@@ -235,7 +245,12 @@ const Cart = () => {
                     <div className="flex items-center gap-4">
                       {item.image && (
                         <div className="w-24 h-24 rounded-md overflow-hidden bg-muted border border-border">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                         <img
+                            src={normalizeImagePath(item.image)}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+
                         </div>
                       )}
                       <div>
