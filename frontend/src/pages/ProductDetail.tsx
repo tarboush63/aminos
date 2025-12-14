@@ -98,16 +98,18 @@ const ProductDetail = () => {
                 </div> 
                 {/* <p className="text-muted-foreground">SKU: {product.sku}</p> */}
               </div>
-
-              <div className="flex items-baseline gap-4">
-                <span className="text-4xl font-bold">${product.price}</span>
-                {product.stock ? (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">In Stock</Badge>
-                ) : (
-                  <Badge variant="destructive">Out of Stock</Badge>
-                )}
+                <div className="flex items-baseline gap-4">
+                  <span className="text-4xl font-bold">${product.price}</span>
+                  {product.stock ? (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">In Stock</Badge>
+                  ) : (
+                    <Badge variant="destructive">Out of Stock</Badge>
+                  )}
+               
               </div>
-
+              <div className="space-y-3 py-4 border-y border-border">
+                  <span className="text-muted-foreground">{product.fullDescription}</span>
+              </div>
               <div className="space-y-3 py-4 border-y border-border">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Dosage:</span>
@@ -122,6 +124,10 @@ const ProductDetail = () => {
                   <span className="font-medium">{product.form}</span>
                 </div>
                 {/* <div className="flex justify-between">
+                  <span className="text-muted-foreground">Description:</span>
+                  <span className="text-muted-foreground">{product.fullDescription}</span>
+                </div> */}
+                {/* <div className="flex justify-between">
                   <span className="text-muted-foreground">Storage:</span>
                   <span className="font-medium">{product.storage}</span>
                 </div> */}
@@ -130,6 +136,8 @@ const ProductDetail = () => {
                   <span className="font-medium">{product.leadTime}</span>
                 </div> */}
               </div>
+
+
 
               <div className="flex gap-4">
                 <Button onClick={() => handleAddToCart(product)} className="flex-1 btn-gold h-12 text-base" disabled={!product.stock}>
@@ -152,6 +160,10 @@ const ProductDetail = () => {
                   <FileText className="mr-2 h-4 w-4" /> Download COA (Certificate of Analysis)
                 </a>
               </Button>
+                {/* <div className="flex justify-between">
+                  <span className="text-muted-foreground">Description:</span>
+                  <span className="font-medium">{product.fullDescription}</span>
+                </div> */}
             </div>
           </div>
 
