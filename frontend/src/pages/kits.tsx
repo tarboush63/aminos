@@ -33,7 +33,7 @@ const Kits = () => {
       <main className="flex-1">
         <div className="bg-muted/30 border-b border-border py-12">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Products</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Kits</h1>
             <p className="text-xl text-muted-foreground">
               Laboratory-grade research peptides with verified COAs
             </p>
@@ -59,9 +59,7 @@ const Kits = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Standard">Standard</SelectItem>
-                <SelectItem value="Specialized">Specialized</SelectItem>
-                <SelectItem value="Premium">Premium</SelectItem>
+                <SelectItem value="Featured">Featured</SelectItem>
               </SelectContent>
             </Select>
 

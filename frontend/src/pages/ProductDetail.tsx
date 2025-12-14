@@ -99,7 +99,23 @@ const ProductDetail = () => {
                 {/* <p className="text-muted-foreground">SKU: {product.sku}</p> */}
               </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-4xl font-bold">${product.price}</span>
+                       <div className="pt-2">
+                        {/* <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span> */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-3xl font-bold text-red-600">
+                            ${product.price.toFixed(2)}
+                          </span>
+
+                          <span className="text-xl line-through text-muted-foreground">
+                            ${Number(product.price*1.2).toFixed(2)}
+                          </span>
+
+                          <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                            -20%
+                          </span>
+                        </div>
+                      </div>
                   {product.stock ? (
                     <Badge variant="secondary" className="bg-green-100 text-green-800">In Stock</Badge>
                   ) : (

@@ -106,7 +106,7 @@ const KitDetail = () => {
                 ) : (
                   <Badge variant="destructive">Out of Stock</Badge>
                 )}
-              </div>
+              </div>s
 
               <div className="space-y-3 py-4 border-y border-border">
                 <div className="flex justify-between">

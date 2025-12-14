@@ -56,8 +56,22 @@ export const KitCard = ({ product }: ProductCardProps) => {
           <p className="text-sm text-muted-foreground">{product.form}</p>
         </div>
                 {/* Price display */}
-        <div className="pt-2">
-          <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span>
+               <div className="pt-2">
+          {/* <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span>
+          <span className="text-2xl font-bold text-primary">${product.price?.toFixed(2)}</span> */}
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold text-red-600">
+              ${product.price.toFixed(2)}
+            </span>
+
+            <span className="text-sm line-through text-muted-foreground">
+              ${Number(product.price*1.2).toFixed(2)}
+            </span>
+
+            <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+              -20%
+            </span>
+          </div>
         </div>
 
         {/* <div className="flex items-center justify-between pt-2">
