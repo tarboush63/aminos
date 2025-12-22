@@ -24,7 +24,7 @@ export const kits: Kit[] = [
     id: "kit-007",
     name: "GLP-3 RT 30mg kit",
     sku: "AMN-reta-30MG",
-    price: 149.99,
+    price: 1049.99,
     dosage: "10 30mg vials",
     purity: "≥99% HLPC",
     form: "10 medical vial",
@@ -35,7 +35,7 @@ export const kits: Kit[] = [
     coaFile: "coa-peptide-001.pdf",
     stock: false,
     leadTime: " 4 days",
-    category: "Standard",
+    category: "Featured",
     featured: true
   },
   {
@@ -53,7 +53,7 @@ export const kits: Kit[] = [
     coaFile: "coa-peptide-002.pdf",
     stock: false,
     leadTime: "24-72 hours",
-    category: "Standard",
+    category: "Featured",
     featured: true
   },
   {

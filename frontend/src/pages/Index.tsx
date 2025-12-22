@@ -31,14 +31,14 @@ const Index = () => {
           
           <div className="container relative z-10 mx-auto px-4 py-20">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 mb-6 ruo-badge">
+              {/* <div className="inline-flex items-center gap-2 mb-6 ruo-badge">
                 <ShieldCheck className="h-4 w-4" />
                 FOR RESEARCH USE ONLY
-              </div>
+              </div> */}
               
               <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-                Research-Grade Peptides —{" "}
-                <span className="text-primary">Verified COAs</span>,{" "}
+                Based in the US,{" "}
+                <span className="text-primary">we ship nationwide to all 50 states</span>,{" "}
                 Rapid Processing
               </h1>
               
