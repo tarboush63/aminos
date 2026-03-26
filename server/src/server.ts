@@ -5,6 +5,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import sgMail from "@sendgrid/mail";
+import crypto from "crypto";
 import { validatePromoForOrder } from "./promos";
 
 
@@ -57,6 +58,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Trust first proxy (Render)
 app.set("trust proxy", 1);
@@ -85,6 +87,27 @@ const escapeHtml = (str: string | undefined): string => {
 };
 
 const safeHtml = (str?: string) => escapeHtml(str || "");
+
+// ---------- Bankful Payment integration utilities ----------
+
+const BANKFUL_SIGN_SECRET = process.env.BANKFUL_SIGN_SECRET || "bankful-secret-sandbox";
+const BANKFUL_MERCHANT_ID = process.env.BANKFUL_MERCHANT_ID || "demo_merchant";
+const BANKFUL_HOSTED_URL = "https://api-dev1.bankfulportal.com/front-calls/go-in/hosted-page-pay";
+
+const processedBankfulOrderIds = new Set<string>();
+const bankfulOrderStatus: Record<string, "paid" | "pending" | "failed"> = {};
+
+function generateBankfulSignature(payload: Record<string, unknown>, secret: string): string {
+  const keys = Object.keys(payload)
+    .filter(k => payload[k] !== undefined && payload[k] !== null && k !== "signature")
+    .sort();
+
+  const stringToSign = keys
+    .map(key => `${key}=${String(payload[key])}`)
+    .join("");
+
+  return crypto.createHmac("sha256", secret).update(stringToSign).digest("hex");
+}
 
 // API: create order
 app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
@@ -170,6 +193,96 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
     console.error("Order error:", err);
     res.status(500).json({ success: false, message: "Failed to process order" });
   }
+});
+
+// ---------- Bankful hosted page creation endpoint ----------
+app.post("/api/bankful/create", orderLimiter, (req: Request, res: Response) => {
+  try {
+    const { order_id, amount, currency, email, customer_name } = req.body as {
+      order_id?: string;
+      amount?: number;
+      currency?: string;
+      email?: string;
+      customer_name?: string;
+    };
+
+    if (!order_id || !amount || !currency || !email) {
+      return res.status(400).json({ success: false, message: "Missing required bankful parameters" });
+    }
+
+    const payload: Record<string, unknown> = {
+      merchant_id: BANKFUL_MERCHANT_ID,
+      order_id: String(order_id),
+      amount: Number(amount).toFixed(2),
+      currency: String(currency).toUpperCase(),
+      email: String(email),
+      customer_name: customer_name ? String(customer_name) : "",
+      return_url: `${process.env.BASE_URL || `http://localhost:${PORT}`}/success`,
+      callback_url: `${process.env.BASE_URL || `http://localhost:${PORT}`}/callback`,
+    };
+
+    const signature = generateBankfulSignature(payload, BANKFUL_SIGN_SECRET);
+    payload.signature = signature;
+
+    // auto-submitting HTML form (POST redirect to Bankful)
+    const html = `<!DOCTYPE html>
+<html><head><title>Redirecting to Bankful</title></head><body>
+  <form id="bankful-form" method="POST" action="${BANKFUL_HOSTED_URL}">
+    ${Object.entries(payload)
+      .map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(String(value))}"/>`)
+      .join("\n    ")}
+  </form>
+  <script>document.getElementById('bankful-form').submit();</script>
+  <noscript>Please submit this form <button type="submit" form="bankful-form">here</button>.</noscript>
+</body></html>`;
+
+    return res.status(200).send(html);
+  } catch (err) {
+    console.error("Bankful create error:", err);
+    return res.status(500).json({ success: false, message: "Failed to create bankful payment" });
+  }
+});
+
+// Callback endpoint from Bankful (webhook)
+app.post("/callback", (req: Request, res: Response) => {
+  try {
+    const payload = req.body as Record<string, string>;
+
+    const { order_id, status, signature } = payload;
+    if (!order_id || !status || !signature) {
+      return res.status(400).json({ success: false, message: "Missing callback fields" });
+    }
+
+    const computedSignature = generateBankfulSignature(payload, BANKFUL_SIGN_SECRET);
+    if (computedSignature !== signature) {
+      console.warn("Bankful callback signature mismatch", { order_id });
+      return res.status(400).json({ success: false, message: "Invalid signature" });
+    }
+
+    if (processedBankfulOrderIds.has(order_id)) {
+      console.warn("Duplicate callback received", { order_id });
+      return res.status(409).json({ success: false, message: "Duplicate callback" });
+    }
+
+    processedBankfulOrderIds.add(order_id);
+
+    if (status.toLowerCase() === "success" || status.toLowerCase() === "paid") {
+      bankfulOrderStatus[order_id] = "paid";
+    } else {
+      bankfulOrderStatus[order_id] = "failed";
+    }
+
+    // Callback should only mark paid; success page is separate.
+    return res.status(200).json({ success: true, message: "Callback accepted" });
+  } catch (err) {
+    console.error("Callback error:", err);
+    return res.status(500).json({ success: false, message: "Callback processing failed" });
+  }
+});
+
+// Return URL after customer completes hosted page (non-authoritative, no state change)
+app.get("/success", (_req, res) => {
+  res.send("Payment complete in gateway. Final settlement is confirmed via callback.");
 });
 
 app.post("/api/promos/validate", promoLimiter, (req: Request, res: Response) => {
