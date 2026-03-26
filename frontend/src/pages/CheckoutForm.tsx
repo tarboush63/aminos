@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useNavigate } from "react-router-dom";
+import { createBankfulCheckout } from "@/api/checkout";
 
 const CheckoutForm = () => {
   const { items, totalPrice, clearCart } = useCart();
@@ -29,17 +30,33 @@ const CheckoutForm = () => {
     setError(null);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/checkout/order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer, cart: items, total: totalPrice })
-      });
+      const resp = await createBankfulCheckout(
+        items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          image: i.image,
+          price: i.price,
+          quantity: i.quantity,
+          currency: i.currency || "usd",
+        })),
+        {
+          name: customer.name.trim(),
+          email: customer.email.trim(),
+          phone: customer.phone.trim(),
+          address: `${customer.address.street} ${customer.address.city} ${customer.address.zip} ${customer.address.country}`.trim(),
+        },
+        Number(totalPrice)
+      );
 
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || "Failed to submit order");
+      if (resp?.success && resp.html) {
+        // Auto-submit HTML from backend to redirect to Bankful
+        document.open();
+        document.write(resp.html);
+        document.close();
+        return;
+      }
 
-      clearCart();
-      navigate("/checkout/success");
+      throw new Error("Failed to initiate payment redirect");
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to submit order");

@@ -92,3 +92,49 @@ export async function createOrder(
 
   return json as { success: boolean; message?: string; orderId?: string };
 }
+
+export async function createBankfulCheckout(
+  items: CartItemForCheckout[],
+  customer: { name: string; email: string; phone?: string; address?: string; company?: string; notes?: string; },
+  total: number,
+  promoCode?: string
+) {
+  if (!BACKEND) throw new Error("Backend URL is not configured (VITE_BACKEND_URL)");
+
+  const order_id = typeof window !== "undefined" && (window.crypto as any)?.randomUUID ? (window.crypto as any).randomUUID() : `order_${Date.now()}`;
+
+  const payload: any = {
+    order_id,
+    amount: Number(total).toFixed(2),
+    currency: items.length ? items[0].currency ?? "usd" : "usd",
+    email: customer.email,
+    customer_name: customer.name,
+    customer_phone: customer.phone,
+    customer_address: customer.address,
+    customer_company: customer.company,
+    customer_notes: customer.notes,
+    items,
+    promoCode: promoCode ? promoCode.trim() : undefined,
+  };
+
+  const res = await fetchWithTimeout(`${BACKEND}/api/bankful/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "text/html,application/xhtml+xml,application/xml" },
+    body: JSON.stringify(payload),
+  }, 60000);
+
+  const text = await res.text().catch(() => "");
+
+  if (!res.ok) {
+    // Try JSON message if the backend returns structured error.
+    try {
+      const errorJson = JSON.parse(text);
+      throw new Error(errorJson.message || `HTTP ${res.status}`);
+    } catch {
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+  }
+
+  return { success: true, html: text, order_id };
+}
+

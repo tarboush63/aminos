@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { createOrder, validatePromo, CartItemForCheckout } from "@/api/checkout";
+import { createBankfulCheckout, validatePromo, CartItemForCheckout } from "@/api/checkout";
 import { useNavigate } from "react-router-dom";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -171,7 +171,7 @@ const Cart = () => {
       }));
 
       // Use postPromoTotal as total to send to server; server will re-validate promo
-      const resp = await createOrder(
+      const resp = await createBankfulCheckout(
         payloadItems,
         {
           name: form.name.trim(),
@@ -185,18 +185,16 @@ const Cart = () => {
         appliedPromo?.code // may be undefined
       );
 
-      if (resp?.success) {
-        const message = resp.message || `Our sales team will contact you shortly to confirm your order.`;
-        setSuccess(message);
-
-        // small UX pause so success shows before clearing
-        setTimeout(() => {
-          clearCart();
-          setCheckoutOpen(false);
-        }, 2000);
-      } else {
-        throw new Error(resp?.message || "Order submission failed");
+      // The endpoint returns HTML with an auto-submitting form.
+      if (resp?.success && resp.html) {
+        // The browser must render this HTML to perform the Bankful POST redirect.
+        document.open();
+        document.write(resp.html);
+        document.close();
+        return; // redirect in progress
       }
+
+      throw new Error("Unexpected response from payment creation endpoint");
     } catch (err: any) {
       console.error("Order submission failed:", err);
 
