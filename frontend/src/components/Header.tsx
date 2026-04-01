@@ -6,11 +6,11 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useCart } from "@/context/CartContext";
 import aminoLogo from "@/assets/aminoLogo.jpg"
 
 export const Header = () => {
-  const [cartCount] = useState(0);
+  const { totalItems } = useCart();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -48,9 +48,9 @@ export const Header = () => {
             <Button variant="ghost" size="icon" className="relative" asChild>
               <Link to="/cart">
                 <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
+                {totalItems > 0 && (
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gold text-xs flex items-center justify-center text-gold-foreground font-bold">
-                    {cartCount}
+                    {totalItems}
                   </span>
                 )}
               </Link>
