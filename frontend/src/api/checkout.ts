@@ -103,16 +103,29 @@ export async function createBankfulCheckout(
 
   const order_id = typeof window !== "undefined" && (window.crypto as any)?.randomUUID ? (window.crypto as any).randomUUID() : `order_${Date.now()}`;
 
+  const baseUrl = window?.location?.origin || "http://localhost:5173";
+
+  const [cust_fname, ...cust_lnameParts] = (customer.name || "").trim().split(" ");
+  const cust_lname = cust_lnameParts.join(" ") || undefined;
+
   const payload: any = {
     order_id,
+    transaction_type: "CAPTURE",
     amount: Number(total).toFixed(2),
-    currency: items.length ? items[0].currency ?? "usd" : "usd",
-    email: customer.email,
-    customer_name: customer.name,
-    customer_phone: customer.phone,
-    customer_address: customer.address,
-    customer_company: customer.company,
-    customer_notes: customer.notes,
+    request_currency: items.length ? items[0].currency ?? "usd" : "usd",
+    cust_fname: cust_fname || undefined,
+    cust_lname,
+    cust_email: customer.email,
+    cust_phone: customer.phone,
+    bill_addr: customer.address,
+    xtl_order_id: order_id,
+    url_cancel: `${baseUrl}/cart`,
+    url_complete: `${baseUrl}/checkout/success`,
+    url_failed: `${baseUrl}/checkout/success?status=failed`,
+    url_callback: `${BACKEND}/callback`,
+    url_pending: `${baseUrl}/checkout/success?status=pending`,
+    cart_name: "Hosted-Page",
+    return_redirect_url: "Y",
     items,
     promoCode: promoCode ? promoCode.trim() : undefined,
   };

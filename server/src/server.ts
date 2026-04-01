@@ -88,10 +88,35 @@ const escapeHtml = (str: string | undefined): string => {
 
 const safeHtml = (str?: string) => escapeHtml(str || "");
 
+const sendSalesEmail = async (subject: string, html: string) => {
+  const useSendGrid = process.env.USE_SENDGRID === "true" || !!process.env.SENDGRID_API_KEY;
+  if (!useSendGrid) {
+    console.warn("SendGrid not configured — skipping sales email.");
+    return;
+  }
+
+  if (!process.env.SENDGRID_API_KEY) {
+    throw new Error("SENDGRID_API_KEY is not set in environment");
+  }
+  if (!process.env.SENDGRID_FROM_EMAIL) {
+    throw new Error("SENDGRID_FROM_EMAIL is not set in environment");
+  }
+
+  const msg = {
+    to: SALES_EMAIL!,
+    from: process.env.SENDGRID_FROM_EMAIL!,
+    subject,
+    html,
+  };
+
+  await sgMail.send(msg);
+};
+
 // ---------- Bankful Payment integration utilities ----------
 
 const BANKFUL_SIGN_SECRET = process.env.BANKFUL_SIGN_SECRET || "bankful-secret-sandbox";
 const BANKFUL_MERCHANT_ID = process.env.BANKFUL_MERCHANT_ID || "demo_merchant";
+const BANKFUL_GATEWAY_USERNAME = process.env.BANKFUL_GATEWAY_USERNAME || BANKFUL_MERCHANT_ID;
 const BANKFUL_HOSTED_URL = "https://api-dev1.bankfulportal.com/front-calls/go-in/hosted-page-pay";
 
 const processedBankfulOrderIds = new Set<string>();
@@ -99,14 +124,20 @@ const bankfulOrderStatus: Record<string, "paid" | "pending" | "failed"> = {};
 
 function generateBankfulSignature(payload: Record<string, unknown>, secret: string): string {
   const keys = Object.keys(payload)
-    .filter(k => payload[k] !== undefined && payload[k] !== null && k !== "signature")
+    .filter(k => payload[k] !== undefined && payload[k] !== null && payload[k] !== "" && k !== "signature")
     .sort();
 
   const stringToSign = keys
-    .map(key => `${key}=${String(payload[key])}`)
+    .map(key => `${key}${String(payload[key])}`)
     .join("");
 
-  return crypto.createHmac("sha256", secret).update(stringToSign).digest("hex");
+  const signature = crypto.createHmac("sha256", secret).update(stringToSign).digest("hex");
+
+  console.log("Bankful signature debug:");
+  console.log("String to sign:", stringToSign);
+  console.log("Signature:", signature);
+
+  return signature;
 }
 
 // API: create order
@@ -159,33 +190,11 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
     `;
 
 
-    // Use SendGrid if configured and requested
-    const useSendGrid = process.env.USE_SENDGRID === "true" || !!process.env.SENDGRID_API_KEY;
-
-    if (useSendGrid) {
-      if (!process.env.SENDGRID_API_KEY) {
-        throw new Error("SENDGRID_API_KEY is not set in environment");
-      }
-
-      const msg = {
-        to: SALES_EMAIL!,
-        from: process.env.SENDGRID_FROM_EMAIL!, // must be verified or within authenticated domain
-        subject: `New Order from ${safeHtml(customer.name)}`,
-        html,
-      };
-
-      try {
-        const response = await sgMail.send(msg);
-        // log useful info for tracing
-        console.log("SendGrid response status:", response?.[0]?.statusCode);
-        console.log("SendGrid headers:", response?.[0]?.headers);
-      } catch (sendErr: any) {
-        console.error("Order email error (SendGrid):", sendErr?.response?.body || sendErr);
-        return res.status(500).json({ success: false, message: "Failed to send order email" });
-      }
-    } else {
-      // Fallback: no SendGrid; you can implement Nodemailer fallback here if desired.
-      console.warn("SendGrid not configured and fallback disabled. Order will be accepted but no email sent.");
+    try {
+      await sendSalesEmail(`New Order from ${safeHtml(customer.name)}`, html);
+    } catch (sendErr: any) {
+      console.error("Order email error (SendGrid):", sendErr?.response?.body || sendErr);
+      return res.status(500).json({ success: false, message: "Failed to send order email" });
     }
 
     res.status(200).json({ success: true, message: "Order received. Our sales team will contact you shortly." });
@@ -198,37 +207,94 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
 // ---------- Bankful hosted page creation endpoint ----------
 app.post("/api/bankful/create", orderLimiter, (req: Request, res: Response) => {
   try {
-    const { order_id, amount, currency, email, customer_name } = req.body as {
+    const {
+      order_id,
+      amount,
+      request_currency,
+      cust_fname,
+      cust_lname,
+      cust_email,
+      cust_phone,
+      bill_addr,
+      bill_addr_2,
+      bill_addr_city,
+      bill_addr_state,
+      bill_addr_zip,
+      bill_addr_country,
+      url_cancel,
+      url_complete,
+      url_failed,
+      url_callback,
+      url_pending,
+      cart_name,
+      return_redirect_url,
+    } = req.body as {
       order_id?: string;
       amount?: number;
-      currency?: string;
-      email?: string;
-      customer_name?: string;
+      request_currency?: string;
+      cust_fname?: string;
+      cust_lname?: string;
+      cust_email?: string;
+      cust_phone?: string;
+      bill_addr?: string;
+      bill_addr_2?: string;
+      bill_addr_city?: string;
+      bill_addr_state?: string;
+      bill_addr_zip?: string;
+      bill_addr_country?: string;
+      url_cancel?: string;
+      url_complete?: string;
+      url_failed?: string;
+      url_callback?: string;
+      url_pending?: string;
+      cart_name?: string;
+      return_redirect_url?: string;
     };
 
-    if (!order_id || !amount || !currency || !email) {
-      return res.status(400).json({ success: false, message: "Missing required bankful parameters" });
+    if (!order_id || !amount || !request_currency || !cust_email) {
+      return res.status(400).json({ success: false, message: "Missing required bankful parameters (order_id, amount, request_currency, cust_email)" });
     }
 
+    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+
     const payload: Record<string, unknown> = {
-      merchant_id: BANKFUL_MERCHANT_ID,
-      order_id: String(order_id),
+      req_username: BANKFUL_GATEWAY_USERNAME,
+      transaction_type: "CAPTURE",
       amount: Number(amount).toFixed(2),
-      currency: String(currency).toUpperCase(),
-      email: String(email),
-      customer_name: customer_name ? String(customer_name) : "",
-      return_url: `${process.env.BASE_URL || `http://localhost:${PORT}`}/success`,
-      callback_url: `${process.env.BASE_URL || `http://localhost:${PORT}`}/callback`,
+      request_currency: String(request_currency).toUpperCase(),
+      cust_fname: cust_fname ? String(cust_fname) : undefined,
+      cust_lname: cust_lname ? String(cust_lname) : undefined,
+      cust_email: cust_email ? String(cust_email) : undefined,
+      cust_phone: cust_phone ? String(cust_phone) : undefined,
+      bill_addr: bill_addr ? String(bill_addr) : undefined,
+      bill_addr_2: bill_addr_2 ? String(bill_addr_2) : undefined,
+      bill_addr_city: bill_addr_city ? String(bill_addr_city) : undefined,
+      bill_addr_state: bill_addr_state ? String(bill_addr_state) : undefined,
+      bill_addr_zip: bill_addr_zip ? String(bill_addr_zip) : undefined,
+      bill_addr_country: bill_addr_country ? String(bill_addr_country) : undefined,
+      xtl_order_id: String(order_id),
+      url_cancel: url_cancel || `${baseUrl}/cart`,
+      url_complete: url_complete || `${baseUrl}/checkout/success`,
+      url_failed: url_failed || `${baseUrl}/checkout/success?status=failed`,
+      url_callback: url_callback || `${baseUrl}/callback`,
+      url_pending: url_pending || `${baseUrl}/checkout/success?status=pending`,
+      cart_name: cart_name || "Hosted-Page",
+      return_redirect_url: return_redirect_url || "Y",
     };
 
-    const signature = generateBankfulSignature(payload, BANKFUL_SIGN_SECRET);
-    payload.signature = signature;
+    const cleanedPayload: Record<string, unknown> = {};
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) cleanedPayload[k] = v;
+    });
+
+    const signature = generateBankfulSignature(cleanedPayload, BANKFUL_SIGN_SECRET);
+    cleanedPayload.signature = signature;
 
     // auto-submitting HTML form (POST redirect to Bankful)
     const html = `<!DOCTYPE html>
 <html><head><title>Redirecting to Bankful</title></head><body>
   <form id="bankful-form" method="POST" action="${BANKFUL_HOSTED_URL}">
-    ${Object.entries(payload)
+    ${Object.entries(cleanedPayload)
       .map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(String(value))}"/>`)
       .join("\n    ")}
   </form>
@@ -244,7 +310,7 @@ app.post("/api/bankful/create", orderLimiter, (req: Request, res: Response) => {
 });
 
 // Callback endpoint from Bankful (webhook)
-app.post("/callback", (req: Request, res: Response) => {
+app.post("/callback", async (req: Request, res: Response) => {
   try {
     const payload = req.body as Record<string, string>;
 
@@ -268,6 +334,22 @@ app.post("/callback", (req: Request, res: Response) => {
 
     if (status.toLowerCase() === "success" || status.toLowerCase() === "paid") {
       bankfulOrderStatus[order_id] = "paid";
+
+      // Send notification email when payment is confirmed
+      const emailHtml = `
+        <h2>Bankful payment confirmed</h2>
+        <p>Order ID: ${escapeHtml(order_id)}</p>
+        <p>Status: ${escapeHtml(status)}</p>
+        <p>Received at: ${new Date().toISOString()}</p>
+      `;
+
+      try {
+        await sendSalesEmail(`Bankful payment confirmed: ${escapeHtml(order_id)}`, emailHtml);
+      } catch (emailErr) {
+        // Don't fail callback because of email issues (callback might be retried by gateway)
+        const emailErrorInfo = (emailErr as any)?.response?.body || emailErr;
+        console.error("Bankful callback email error:", emailErrorInfo);
+      }
     } else {
       bankfulOrderStatus[order_id] = "failed";
     }
