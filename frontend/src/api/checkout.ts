@@ -132,7 +132,7 @@ export async function createBankfulCheckout(
 
   const res = await fetchWithTimeout(`${BACKEND}/api/bankful/create`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "text/html,application/xhtml+xml,application/xml" },
+    headers: { "Content-Type": "application/json", Accept: "application/json,text/html" },
     body: JSON.stringify(payload),
   }, 60000);
 
@@ -148,6 +148,17 @@ export async function createBankfulCheckout(
     }
   }
 
+  // Try to parse as JSON first (new format with redirect_url)
+  try {
+    const jsonResponse = JSON.parse(text);
+    if (jsonResponse.redirect_url) {
+      return { success: true, redirect_url: jsonResponse.redirect_url, order_id };
+    }
+  } catch {
+    // Not JSON, treat as HTML (legacy support)
+  }
+
+  // Fallback: return HTML response
   return { success: true, html: text, order_id };
 }
 

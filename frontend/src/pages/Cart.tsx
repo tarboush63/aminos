@@ -50,7 +50,8 @@ const Cart = () => {
     if (!form.name.trim()) errs.name = "Full name is required";
     if (!form.email.trim()) errs.email = "Email is required";
     else if (!emailRegex.test(form.email.trim())) errs.email = "Invalid email address";
-    if (form.phone && !phoneRegex.test(form.phone)) errs.phone = "Invalid phone number";
+    if (!form.phone.trim()) errs.phone = "Phone number is required";
+    else if (!phoneRegex.test(form.phone)) errs.phone = "Invalid phone number";
     if (!form.address.trim()) errs.address = "Address is required";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -185,7 +186,16 @@ const Cart = () => {
         appliedPromo?.code // may be undefined
       );
 
-      // The endpoint returns HTML with an auto-submitting form.
+      // Handle JSON response with redirect_url
+      if (resp?.redirect_url) {
+        // Clear cart before redirecting to payment
+        clearCart();
+        // Redirect to Bankful hosted payment page
+        window.location.href = resp.redirect_url;
+        return;
+      }
+
+      // Fallback: Handle HTML response (legacy support)
       if (resp?.success && resp.html) {
         // The browser must render this HTML to perform the Bankful POST redirect.
         document.open();
@@ -369,7 +379,7 @@ const Cart = () => {
                 ) : (
                   <form onSubmit={handleSubmitOrder} className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium">Full name *</label>
+                      <label className="block text-sm font-medium">Full Name *</label>
                       <input
                         name="name"
                         value={form.name}
@@ -394,13 +404,14 @@ const Cart = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium">Phone</label>
+                      <label className="block text-sm font-medium">Phone *</label>
                       <input
                         name="phone"
                         value={form.phone}
                         onChange={handleChange}
                         className={`mt-1 block w-full rounded-md border px-3 py-2 ${formErrors.phone ? "border-red-600" : "border-border"}`}
                         placeholder="+1 555 555 5555"
+                        required
                       />
                       {formErrors.phone && <p className="text-xs text-red-600 mt-1">{formErrors.phone}</p>}
                     </div>

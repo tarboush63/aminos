@@ -205,7 +205,7 @@ app.post("/api/orders", orderLimiter, async (req: Request, res: Response) => {
 });
 
 // ---------- Bankful hosted page creation endpoint ----------
-app.post("/api/bankful/create", orderLimiter, (req: Request, res: Response) => {
+app.post("/api/bankful/create", orderLimiter, async (req: Request, res: Response) => {
   try {
     const {
       order_id,
@@ -290,19 +290,37 @@ app.post("/api/bankful/create", orderLimiter, (req: Request, res: Response) => {
     const signature = generateBankfulSignature(cleanedPayload, BANKFUL_SIGN_SECRET);
     cleanedPayload.signature = signature;
 
-    // auto-submitting HTML form (POST redirect to Bankful)
-    const html = `<!DOCTYPE html>
-<html><head><title>Redirecting to Bankful</title></head><body>
-  <form id="bankful-form" method="POST" action="${BANKFUL_HOSTED_URL}">
-    ${Object.entries(cleanedPayload)
-      .map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(String(value))}"/>`)
-      .join("\n    ")}
-  </form>
-  <script>document.getElementById('bankful-form').submit();</script>
-  <noscript>Please submit this form <button type="submit" form="bankful-form">here</button>.</noscript>
-</body></html>`;
+    // Make direct API call to Bankful
+    try {
+      const bankfulResponse = await fetch(BANKFUL_HOSTED_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(cleanedPayload),
+      });
 
-    return res.status(200).send(html);
+      if (!bankfulResponse.ok) {
+        throw new Error(`Bankful API error: ${bankfulResponse.status} ${bankfulResponse.statusText}`);
+      }
+
+      const bankfulData = await bankfulResponse.json();
+
+      if (bankfulData.redirect_url) {
+        // Return the redirect URL to frontend
+        return res.status(200).json({
+          success: true,
+          redirect_url: bankfulData.redirect_url,
+          order_id: order_id
+        });
+      } else {
+        throw new Error('Bankful did not return a redirect_url');
+      }
+    } catch (apiError) {
+      console.error('Bankful API call failed:', apiError);
+      throw new Error('Failed to communicate with Bankful payment gateway');
+    }
   } catch (err) {
     console.error("Bankful create error:", err);
     return res.status(500).json({ success: false, message: "Failed to create bankful payment" });

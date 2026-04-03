@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/data/products";
 import { useState } from "react";
+import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
   product: Product;
@@ -23,6 +24,17 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const defaultImg = "/images/nad1.jpg";
   const initial = normalizeImagePath(product?.image);
   const [imgSrc, setImgSrc] = useState(initial);
+  const { addItem } = useCart();
+
+  const handleBuyNow = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      sku: product.sku,
+    }, 1);
+  };
 
   return (
     <div className="card-product group">
@@ -80,8 +92,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </div> */}
 
         <div className="flex gap-2 pt-2">
-          <Button asChild className="flex-1 btn-gold">
-            <Link to={`/product/${product.id}`}>Buy Now</Link>
+          <Button onClick={handleBuyNow} className="flex-1 btn-gold">
+            Buy Now
           </Button>
           <Button variant="outline" asChild className="flex-1">
             <Link to={`/product/${product.id}`}>View Details</Link>

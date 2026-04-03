@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { createBankfulCheckout } from "@/api/checkout";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const CheckoutForm = () => {
   const { items, totalPrice, clearCart } = useCart();
@@ -37,7 +39,7 @@ const CheckoutForm = () => {
           image: i.image,
           price: i.price,
           quantity: i.quantity,
-          currency: i.currency || "usd",
+          currency: "usd",
         })),
         {
           name: customer.name.trim(),
@@ -48,6 +50,16 @@ const CheckoutForm = () => {
         Number(totalPrice)
       );
 
+      // Handle JSON response with redirect_url
+      if (resp?.redirect_url) {
+        // Clear cart before redirecting to payment
+        clearCart();
+        // Redirect to Bankful hosted payment page
+        window.location.href = resp.redirect_url;
+        return;
+      }
+
+      // Fallback: Handle HTML response (legacy support)
       if (resp?.success && resp.html) {
         // Auto-submit HTML from backend to redirect to Bankful
         document.open();
@@ -66,21 +78,101 @@ const CheckoutForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-6">
       <h2 className="text-2xl font-bold">Shipping Details</h2>
 
-      <input name="name" value={customer.name} onChange={handleChange} placeholder="Full Name" required />
-      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
-      <input name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" />
+      <div className="space-y-2">
+        <Label htmlFor="name">Full Name *</Label>
+        <Input
+          id="name"
+          name="name"
+          value={customer.name}
+          onChange={handleChange}
+          placeholder="Full Name"
+          required
+        />
+      </div>
 
-      <input name="street" value={customer.address.street} onChange={handleChange} placeholder="Street" required />
-      <input name="city" value={customer.address.city} onChange={handleChange} placeholder="City" required />
-      <input name="zip" value={customer.address.zip} onChange={handleChange} placeholder="Zip / Postal Code" required />
-      <input name="country" value={customer.address.country} onChange={handleChange} placeholder="Country" required />
+      <div className="space-y-2">
+        <Label htmlFor="email">Email *</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          value={customer.email}
+          onChange={handleChange}
+          placeholder="Email"
+          required
+        />
+      </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone *</Label>
+        <Input
+          id="phone"
+          name="phone"
+          value={customer.phone}
+          onChange={handleChange}
+          placeholder="Phone"
+          required
+        />
+      </div>
 
-      <button type="submit" disabled={busy}>
+      <div className="space-y-2">
+        <Label htmlFor="street">Street *</Label>
+        <Input
+          id="street"
+          name="street"
+          value={customer.address.street}
+          onChange={handleChange}
+          placeholder="Street"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="city">City *</Label>
+        <Input
+          id="city"
+          name="city"
+          value={customer.address.city}
+          onChange={handleChange}
+          placeholder="City"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="zip">Zip / Postal Code *</Label>
+        <Input
+          id="zip"
+          name="zip"
+          value={customer.address.zip}
+          onChange={handleChange}
+          placeholder="Zip / Postal Code"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="country">Country *</Label>
+        <Input
+          id="country"
+          name="country"
+          value={customer.address.country}
+          onChange={handleChange}
+          placeholder="Country"
+          required
+        />
+      </div>
+
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={busy}
+        className="w-full h-10 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
         {busy ? "Submitting..." : "Place Order"}
       </button>
     </form>
