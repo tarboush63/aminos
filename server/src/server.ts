@@ -117,7 +117,7 @@ const sendSalesEmail = async (subject: string, html: string) => {
 const BANKFUL_SIGN_SECRET = process.env.BANKFUL_SIGN_SECRET || "bankful-secret-sandbox";
 const BANKFUL_MERCHANT_ID = process.env.BANKFUL_MERCHANT_ID || "demo_merchant";
 const BANKFUL_GATEWAY_USERNAME = process.env.BANKFUL_GATEWAY_USERNAME || BANKFUL_MERCHANT_ID;
-const BANKFUL_HOSTED_URL = "https://api-dev1.bankfulportal.com/front-calls/go-in/hosted-page-pay";
+const BANKFUL_HOSTED_URL = "https://api.paybybankful.com/front-calls/go-in/hosted-page-pay";
 
 const processedBankfulOrderIds = new Set<string>();
 const bankfulOrderStatus: Record<string, "paid" | "pending" | "failed"> = {};
